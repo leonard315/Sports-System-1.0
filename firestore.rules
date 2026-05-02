@@ -1,11 +1,9 @@
-
 /**
  * Firestore Security Rules
  *
  * CORE PHILOSOPHY:
- * This ruleset implements a centralized administrative control model. While tournament data (Teams and Matches) 
- * is publicly accessible for viewing to support transparency and engagement, all modifications are restricted 
- * to verified administrators. 
+ * Tournament data (Teams, Matches, Events) is publicly readable for transparency.
+ * All write operations are restricted to verified administrators or judges.
  */
 
 rules_version = '2';
@@ -14,25 +12,27 @@ service cloud.firestore {
 
     // --- Helper Functions ---
 
-    /** Checks if the user is authenticated with Firebase Auth. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** 
-     * Verifies if the authenticated user has administrative privileges.
-     * Checks for the existence of a document in the 'roles_admin' collection matching the user's UID.
-     */
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    function isJudge() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_judge/$(request.auth.uid));
+    }
+
+    function isAdminOrJudge() {
+      return isAdmin() || isJudge();
     }
 
     function isExistingAdmin() {
       return isAdmin() && resource != null;
     }
 
-    // --- Collection Rules ---
-
+    // --- Teams ---
     match /teams/{teamId} {
       allow get, list: if true;
       allow create: if isAdmin() && request.resource.data.id == teamId;
@@ -40,6 +40,7 @@ service cloud.firestore {
       allow delete: if isExistingAdmin();
     }
 
+    // --- Matches ---
     match /matches/{matchId} {
       allow get, list: if true;
       allow create: if isAdmin() && request.resource.data.id == matchId;
@@ -47,16 +48,58 @@ service cloud.firestore {
       allow delete: if isExistingAdmin();
     }
 
-    /**
-     * @description Rules for the 'roles_admin' metadata collection.
-     * For development/prototyping, we allow users to create their own admin document 
-     * during registration to facilitate testing the tabulation features.
-     * We allow signed-in users to list officials so the registry page works.
-     */
+    // --- Admin Roles ---
     match /roles_admin/{userId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update, delete: if false;
+    }
+
+    // --- Judge Roles ---
+    match /roles_judge/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if false; // Only created via Admin SDK (server-side)
+    }
+
+    // --- Judged Events ---
+    match /judged_events/{eventId} {
+      allow get, list: if true; // Public read
+      allow create: if isAdmin() && request.resource.data.id == eventId;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --- Event Participants ---
+    match /event_participants/{participantId} {
+      allow get, list: if true; // Public read for live results
+      allow create: if isAdmin() && request.resource.data.id == participantId;
+      allow update: if isAdminOrJudge(); // Judges can update scores
+      allow delete: if isAdmin();
+    }
+
+    // --- Judges Registry ---
+    match /judges_registry/{judgeId} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin() && request.resource.data.id == judgeId;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --- Account Requests ---
+    match /account_requests/{requestId} {
+      allow create: if true; // Anyone can submit a request
+      allow get, list: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --- App Users ---
+    match /app_users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

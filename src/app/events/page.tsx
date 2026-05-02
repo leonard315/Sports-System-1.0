@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Edit2, ArrowLeft, Star, Search, X, ChevronRight, Users, Calendar } from "lucide-react";
+import { Plus, Trash2, Edit2, ArrowLeft, Star, Search, X, ChevronRight, Users, Calendar, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
@@ -41,7 +41,7 @@ export default function EventsPage() {
   const { toast } = useToast();
 
   const eventsQuery = useMemoFirebase(() => collection(firestore, "judged_events"), [firestore]);
-  const { data: events } = useCollection<JudgedEvent>(eventsQuery);
+  const { data: events, error: eventsError } = useCollection<JudgedEvent>(eventsQuery);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -113,6 +113,15 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Firestore permission error notice */}
+      {eventsError && (
+        <div className="flex items-center gap-3 bg-red-900/20 border border-red-900/30 p-4 rounded-2xl">
+          <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+          <p className="text-xs font-bold text-red-300">
+            Could not load events. Check your Firestore security rules or login status.
+          </p>
+        </div>
+      )}
       <div className="flex flex-col gap-4">
         <Link href="/dashboard">
           <Button variant="ghost" size="sm" className="w-fit gap-2 -ml-2 text-slate-500 hover:text-white font-bold transition-colors">
