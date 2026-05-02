@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Swords, Clock, ChevronRight, Calculator, FileCheck, ShieldAlert, PlusCircle, UserCheck, ShieldCheck, AlertTriangle, User as UserIcon, BarChart3, Star, Zap } from "lucide-react";
+import { Trophy, Users, Swords, Clock, ChevronRight, Calculator, FileCheck, ShieldAlert, PlusCircle, UserCheck, ShieldCheck, AlertTriangle, User as UserIcon, BarChart3, Star } from "lucide-react";
 import { collection, query, orderBy, limit, doc } from "firebase/firestore";
 import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase";
 import { Team, Match } from "@/lib/types";
@@ -327,7 +327,10 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <span className="text-lg md:text-2xl font-black text-white group-hover:text-primary transition-colors block leading-none truncate max-w-[120px] md:max-w-none">{team.name}</span>
-                      <div className="flex gap-3 md:gap-4 text-[9px] md:text-[11px] uppercase font-black text-slate-500 mt-2 md:mt-3 tracking-widest">
+                      <div className="flex flex-wrap gap-2 md:gap-3 text-[9px] md:text-[11px] uppercase font-black text-slate-500 mt-2 md:mt-3 tracking-widest items-center">
+                        {team.sport && (
+                          <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[9px] font-black uppercase border border-slate-700">{team.sport}</span>
+                        )}
                         <span className="flex items-center gap-1"><div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-green-500" /> W: {team.wins}</span>
                         <span className="flex items-center gap-1"><div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-red-500" /> L: {team.losses}</span>
                       </div>
