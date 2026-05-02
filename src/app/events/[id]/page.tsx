@@ -151,13 +151,20 @@ export default function EventDetailPage() {
               <span className="flex items-center gap-1.5"><Star className="w-4 h-4" />{participants?.length || 0} Participant{(participants?.length || 0) !== 1 ? "s" : ""}</span>
             </div>
           </div>
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-              <Button className="h-12 px-8 text-md font-bold gap-3 rounded-2xl premium-shadow bg-primary shrink-0">
-                <Plus className="w-5 h-5" />
-                Add Participant
+          <div className="flex gap-3 shrink-0">
+            <Link href={`/events/${id}/results`}>
+              <Button variant="outline" className="h-12 px-6 font-bold gap-2 rounded-2xl border-slate-700 bg-slate-900 text-white hover:bg-slate-800">
+                <Trophy className="w-4 h-4 text-amber-400" />
+                View Results
               </Button>
-            </DialogTrigger>
+            </Link>
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+              <DialogTrigger asChild>
+                <Button className="h-12 px-8 text-md font-bold gap-3 rounded-2xl premium-shadow bg-primary">
+                  <Plus className="w-5 h-5" />
+                  Add Participant
+                </Button>
+              </DialogTrigger>
             <DialogContent className="rounded-[2rem] p-8 border-none premium-shadow bg-slate-900">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black text-white">Add Participant</DialogTitle>

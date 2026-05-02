@@ -39,11 +39,13 @@ export default function DashboardPage() {
     [firestore]
   );
 
+  const eventsQuery = useMemoFirebase(() => collection(firestore, "judged_events"), [firestore]);
+  const { data: allEvents } = useCollection<{ id: string; status: string }>(eventsQuery as any);
+
   const recentMatchesQuery = useMemoFirebase(() => 
     query(collection(firestore, "matches"), orderBy("date", "desc"), limit(6)),
     [firestore]
   );
-
   const { data: topTeams, isLoading: teamsLoading } = useCollection<Team>(teamsQuery);
   const { data: allTeams } = useCollection<Team>(allTeamsQuery);
   const { data: recentMatches, isLoading: matchesLoading } = useCollection<Match>(recentMatchesQuery);
@@ -51,6 +53,8 @@ export default function DashboardPage() {
   const stats = {
     totalTeams: allTeams?.length || 0,
     totalMatches: recentMatches?.length || 0,
+    totalEvents: allEvents?.length || 0,
+    ongoingEvents: (allEvents || []).filter((e) => e.status === "ongoing").length,
     activeLeader: topTeams?.[0]?.name || "None"
   };
 
@@ -200,7 +204,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
         <Card className="rounded-[2rem] md:rounded-[3rem] border-none shadow-sm bg-slate-900 premium-shadow border border-white/5">
           <CardHeader className="flex flex-row items-center justify-between pb-2 p-6 md:p-8">
             <CardTitle className="text-[10px] md:text-[11px] font-black text-slate-500 uppercase tracking-[0.3em]">Validated Roster</CardTitle>
@@ -231,6 +235,19 @@ export default function DashboardPage() {
           <CardContent className="p-6 md:p-8 pt-0">
             <div className="text-4xl md:text-5xl font-black text-white">{stats.totalMatches}</div>
             <p className="text-[10px] text-slate-500 mt-2 uppercase font-black tracking-widest">Verified Results</p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] md:rounded-[3rem] border-none shadow-sm bg-slate-900 premium-shadow border border-white/5">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-6 md:p-8">
+            <CardTitle className="text-[10px] md:text-[11px] font-black text-slate-500 uppercase tracking-[0.3em]">Events</CardTitle>
+            <div className="p-2.5 bg-amber-900/20 rounded-xl"><Star className="w-5 h-5 text-amber-400" /></div>
+          </CardHeader>
+          <CardContent className="p-6 md:p-8 pt-0">
+            <div className="text-4xl md:text-5xl font-black text-white">{stats.totalEvents}</div>
+            <p className="text-[10px] text-slate-500 mt-2 uppercase font-black tracking-widest">
+              {stats.ongoingEvents > 0 ? `${stats.ongoingEvents} Ongoing` : "Judged Events"}
+            </p>
           </CardContent>
         </Card>
       </div>

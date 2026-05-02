@@ -82,3 +82,26 @@ export const EVENT_CATEGORIES = [
   "Academic",
   "Other",
 ] as const;
+
+// ─── Global Judges Registry ───────────────────────────────────────────────────
+
+export interface Judge {
+  id: string;
+  name: string;
+  email?: string;
+  assignedEventIds: string[]; // events this judge is assigned to
+  createdAt: any;
+}
+
+// ─── User Roles ───────────────────────────────────────────────────────────────
+
+export type UserRole = "admin" | "encoder" | "viewer";
+
+export interface AppUser {
+  uid: string;
+  email: string;
+  displayName?: string;
+  role: UserRole;
+  lastSeen?: any;
+  createdAt: any;
+}
