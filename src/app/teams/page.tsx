@@ -115,6 +115,7 @@ export default function TeamsPage() {
     if (!editingTeam || !editingTeam.name.trim()) return;
 
     updateDocumentNonBlocking(doc(firestore, "teams", editingTeam.id), {
+      id: editingTeam.id,
       name: editingTeam.name,
       sport: editingTeam.sport,
     });

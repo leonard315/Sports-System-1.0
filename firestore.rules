@@ -36,16 +36,16 @@ service cloud.firestore {
     match /teams/{teamId} {
       allow get, list: if true;
       allow create: if isAdmin() && request.resource.data.id == teamId;
-      allow update: if isExistingAdmin() && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // --- Matches ---
     match /matches/{matchId} {
       allow get, list: if true;
       allow create: if isAdmin() && request.resource.data.id == matchId;
-      allow update: if isExistingAdmin() && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // --- Admin Roles ---
