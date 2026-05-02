@@ -37,9 +37,18 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
+      const userCredential = await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
       toast({ title: "Welcome back", description: "Successfully authenticated." });
-      router.push("/dashboard");
+
+      // Check if this user is a judge
+      const { getFirestore, doc, getDoc } = await import("firebase/firestore");
+      const db = getFirestore(userCredential.user.app);
+      const judgeDoc = await getDoc(doc(db, "roles_judge", userCredential.user.uid));
+      if (judgeDoc.exists()) {
+        router.push("/judge-portal");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message || "Failed to sign in. Check your credentials.");
     } finally {
