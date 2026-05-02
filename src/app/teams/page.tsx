@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Team, ALL_SPORTS } from "@/lib/types";
@@ -114,15 +114,17 @@ export default function TeamsPage() {
   const handleEditTeam = () => {
     if (!editingTeam || !editingTeam.name.trim()) return;
 
-    updateDocumentNonBlocking(doc(firestore, "teams", editingTeam.id), {
-      id: editingTeam.id,
+    setDoc(doc(firestore, "teams", editingTeam.id), {
       name: editingTeam.name,
-      sport: editingTeam.sport,
+      sport: editingTeam.sport || "",
+    }, { merge: true }).then(() => {
+      toast({ title: "Team Updated", description: "Changes saved successfully." });
+    }).catch((err: any) => {
+      toast({ title: "Update Failed", description: err.message, variant: "destructive" });
     });
 
     setIsEditOpen(false);
     setEditingTeam(null);
-    toast({ title: "Team Updated", description: "Changes saved successfully." });
   };
 
   const handleDeleteTeam = (id: string, name: string) => {
