@@ -2,8 +2,8 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Swords, Clock, ChevronRight, Calculator, FileCheck, ShieldAlert, PlusCircle, UserCheck, ShieldCheck, AlertTriangle, User as UserIcon, BarChart3, Star } from "lucide-react";
-import { collection, query, orderBy, limit, doc } from "firebase/firestore";
+import { Trophy, Users, Swords, Clock, ChevronRight, Calculator, FileCheck, ShieldAlert, PlusCircle, UserCheck, ShieldCheck, AlertTriangle, User as UserIcon, BarChart3, Star, Gavel, Bell, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { collection, query, orderBy, limit, doc, where } from "firebase/firestore";
 import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase";
 import { Team, Match } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,21 +13,71 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { useState } from "react";
+import { getIdToken } from "firebase/auth";
+import { useAuth } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 const AUTHORIZED_ADMIN_EMAIL = "admin@Sports.com";
 
 export default function DashboardPage() {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const { toast } = useToast();
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const adminDocRef = useMemoFirebase(() => 
+  const adminDocRef = useMemoFirebase(() =>
     user ? doc(firestore, "roles_admin", user.uid) : null,
     [firestore, user]
   );
   const { data: adminData, isLoading: adminLoading } = useDoc(adminDocRef);
-  
+
+  const judgeDocRef = useMemoFirebase(() =>
+    user ? doc(firestore, "roles_judge", user.uid) : null,
+    [firestore, user]
+  );
+  const { data: judgeData } = useDoc(judgeDocRef);
+
   const isAdmin = !!adminData;
+  const isJudge = !!judgeData;
+  const userRole: "admin" | "judge" | "viewer" = isAdmin ? "admin" : isJudge ? "judge" : "viewer";
+
   const isAuthorizedPending = user?.email?.toLowerCase() === AUTHORIZED_ADMIN_EMAIL.toLowerCase() && !isAdmin;
+
+  // Pending account requests (admin only)
+  const requestsQuery = useMemoFirebase(() =>
+    isAdmin
+      ? query(collection(firestore, "account_requests"), where("status", "==", "pending"), orderBy("createdAt", "desc"))
+      : null,
+    [firestore, isAdmin]
+  );
+  const { data: pendingRequests } = useCollection<{
+    id: string; name: string; email: string; role: string; status: string; createdAt: any;
+  }>(requestsQuery as any);
+
+  const handleApprove = async (requestId: string, action: "approve" | "reject") => {
+    if (!auth.currentUser) return;
+    setApprovingId(requestId);
+    try {
+      const idToken = await getIdToken(auth.currentUser);
+      const res = await fetch("/api/accounts/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ requestId, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({
+        title: action === "approve" ? "Account Approved" : "Request Rejected",
+        description: action === "approve" ? "The user can now log in." : "Request has been rejected.",
+      });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   const teamsQuery = useMemoFirebase(() => 
     query(collection(firestore, "teams"), orderBy("points", "desc"), limit(4)),
@@ -106,11 +156,15 @@ export default function DashboardPage() {
             <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 mt-4">
               {isAdmin ? (
                 <Badge className="px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-primary/20 text-primary border-primary/30 gap-2 font-black uppercase text-[9px] md:text-[10px] tracking-widest shadow-lg shadow-primary/10">
-                  <ShieldCheck className="w-4 h-4" /> Verified Official Status
+                  <ShieldCheck className="w-4 h-4" /> Admin
+                </Badge>
+              ) : isJudge ? (
+                <Badge className="px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-indigo-900/20 text-indigo-400 border-indigo-900/30 gap-2 font-black uppercase text-[9px] md:text-[10px] tracking-widest">
+                  <Gavel className="w-4 h-4" /> Judge
                 </Badge>
               ) : (
                 <Badge variant="outline" className="px-3 py-1 md:px-4 md:py-1.5 rounded-full border-slate-800 text-slate-500 gap-2 font-black uppercase text-[9px] md:text-[10px] tracking-widest bg-slate-900/50">
-                  <ShieldAlert className="w-4 h-4" /> Viewer Access Mode
+                  <ShieldAlert className="w-4 h-4" /> Viewer
                 </Badge>
               )}
               <span className="text-[10px] md:text-[11px] font-black text-slate-600 uppercase tracking-widest truncate max-w-full">{user?.email}</span>
@@ -143,6 +197,62 @@ export default function DashboardPage() {
             <Button asChild className="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-black font-black rounded-2xl h-14 md:h-16 px-10 md:px-12 shadow-2xl shadow-amber-500/20 text-md md:text-lg">
               <Link href="/admin-setup">Initialize Official Role</Link>
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {isAdmin && pendingRequests && pendingRequests.length > 0 && (
+        <Card className="rounded-[2rem] md:rounded-[3rem] border-none bg-slate-900 border border-amber-900/30 overflow-hidden shadow-2xl premium-shadow">
+          <CardHeader className="border-b border-slate-800 bg-amber-900/10 p-6 md:p-8 flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-3 text-lg font-black text-white">
+              <Bell className="w-5 h-5 text-amber-400" />
+              Pending Account Requests
+              <Badge className="bg-amber-500 text-black font-black text-xs px-2 py-0.5 ml-1">{pendingRequests.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-slate-800">
+              {pendingRequests.map((req) => (
+                <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 md:p-6 hover:bg-slate-800/30 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black text-slate-400 text-sm uppercase border border-slate-700">
+                      {req.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-black text-white text-base">{req.name}</p>
+                      <p className="text-slate-500 text-xs font-bold">{req.email}</p>
+                    </div>
+                    <Badge className={`border-none font-black text-[10px] uppercase px-3 gap-1.5 ml-2 ${
+                      req.role === "judge" ? "bg-indigo-900/20 text-indigo-400" : "bg-slate-700/40 text-slate-400"
+                    }`}>
+                      {req.role === "judge" ? <Gavel className="w-3 h-3" /> : <UserIcon className="w-3 h-3" />}
+                      {req.role}
+                    </Badge>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      className="rounded-xl font-black gap-1.5 bg-green-700 hover:bg-green-600 h-9 px-4"
+                      onClick={() => handleApprove(req.id, "approve")}
+                      disabled={approvingId === req.id}
+                    >
+                      {approvingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="rounded-xl font-black gap-1.5 text-slate-500 hover:text-destructive hover:bg-red-900/20 h-9 px-4"
+                      onClick={() => handleApprove(req.id, "reject")}
+                      disabled={approvingId === req.id}
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
