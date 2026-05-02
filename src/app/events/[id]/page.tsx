@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { collection, doc, serverTimestamp, query, where, orderBy } from "firebase/firestore";
+import { collection, doc, serverTimestamp, query, where } from "firebase/firestore";
 import { useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { JudgedEvent, EventParticipant } from "@/lib/types";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, ArrowLeft, Star, Trophy, Users, Calendar, Edit2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Star, Trophy, Users, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -27,32 +27,25 @@ export default function EventDetailPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  // Load event
   const eventRef = useMemoFirebase(() => doc(firestore, "judged_events", id), [firestore, id]);
   const { data: event } = useDoc<JudgedEvent>(eventRef);
 
-  // Load participants
-  const participantsQuery = useMemoFirebase(() =>
-    query(collection(firestore, "event_participants"), where("eventId", "==", id)),
+  const participantsQuery = useMemoFirebase(
+    () => query(collection(firestore, "event_participants"), where("eventId", "==", id)),
     [firestore, id]
   );
   const { data: participants } = useCollection<EventParticipant>(participantsQuery);
 
-  // Add participant dialog
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
-
-  // Score encoding state: participantId → judgeIndex → score string
   const [scoreInputs, setScoreInputs] = useState<Record<string, Record<number, string>>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  // Ranked participants
   const ranked = useMemo(() => {
     if (!participants) return [];
     return [...participants].sort((a, b) => b.totalScore - a.totalScore);
   }, [participants]);
 
-  // Initialize score inputs from existing data
   useEffect(() => {
     if (!participants) return;
     const init: Record<string, Record<number, string>> = {};
@@ -90,32 +83,25 @@ export default function EventDetailPage() {
   const handleScoreChange = (participantId: string, judgeIndex: number, value: string) => {
     setScoreInputs((prev) => ({
       ...prev,
-      [participantId]: {
-        ...(prev[participantId] || {}),
-        [judgeIndex]: value,
-      },
+      [participantId]: { ...(prev[participantId] || {}), [judgeIndex]: value },
     }));
   };
 
   const handleSaveScores = (participant: EventParticipant) => {
     if (!event) return;
     setSavingId(participant.id);
-
     const inputs = scoreInputs[participant.id] || {};
     const scores: Record<string, number> = {};
     let total = 0;
-
     event.judges.forEach((_, i) => {
       const val = parseFloat(inputs[i] || "0") || 0;
       scores[String(i)] = val;
       total += val;
     });
-
     updateDocumentNonBlocking(doc(firestore, "event_participants", participant.id), {
       scores,
       totalScore: total,
     });
-
     setTimeout(() => setSavingId(null), 800);
     toast({ title: "Scores Saved", description: `${participant.name}: ${total.toFixed(2)} pts` });
   };
@@ -138,11 +124,17 @@ export default function EventDetailPage() {
             Back to Events
           </Button>
         </Link>
+
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+          {/* Event info */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <Badge className="bg-indigo-900/20 text-indigo-400 border-none font-black text-[10px] uppercase px-3">{event.category}</Badge>
-              <Badge className={`border-none font-black text-[10px] uppercase px-3 ${STATUS_STYLES[event.status]}`}>{event.status}</Badge>
+              <Badge className="bg-indigo-900/20 text-indigo-400 border-none font-black text-[10px] uppercase px-3">
+                {event.category}
+              </Badge>
+              <Badge className={`border-none font-black text-[10px] uppercase px-3 ${STATUS_STYLES[event.status]}`}>
+                {event.status}
+              </Badge>
             </div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight text-white">{event.name}</h2>
             <div className="flex flex-wrap gap-4 text-slate-400 text-sm font-bold">
@@ -151,6 +143,8 @@ export default function EventDetailPage() {
               <span className="flex items-center gap-1.5"><Star className="w-4 h-4" />{participants?.length || 0} Participant{(participants?.length || 0) !== 1 ? "s" : ""}</span>
             </div>
           </div>
+
+          {/* Action buttons */}
           <div className="flex gap-3 shrink-0">
             <Link href={`/events/${id}/results`}>
               <Button variant="outline" className="h-12 px-6 font-bold gap-2 rounded-2xl border-slate-700 bg-slate-900 text-white hover:bg-slate-800">
@@ -158,6 +152,7 @@ export default function EventDetailPage() {
                 View Results
               </Button>
             </Link>
+
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
               <DialogTrigger asChild>
                 <Button className="h-12 px-8 text-md font-bold gap-3 rounded-2xl premium-shadow bg-primary">
@@ -165,32 +160,33 @@ export default function EventDetailPage() {
                   Add Participant
                 </Button>
               </DialogTrigger>
-            <DialogContent className="rounded-[2rem] p-8 border-none premium-shadow bg-slate-900">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black text-white">Add Participant</DialogTitle>
-              </DialogHeader>
-              <div className="py-6 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest">Name / Team</label>
-                  <Input
-                    placeholder="e.g. Team Alpha or Juan dela Cruz"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddParticipant()}
-                    className="h-12 rounded-xl border-slate-800 bg-slate-950 text-white"
-                  />
+              <DialogContent className="rounded-[2rem] p-8 border-none premium-shadow bg-slate-900">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black text-white">Add Participant</DialogTitle>
+                </DialogHeader>
+                <div className="py-6 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase text-slate-500 tracking-widest">Name / Team</label>
+                    <Input
+                      placeholder="e.g. Team Alpha or Juan dela Cruz"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddParticipant()}
+                      className="h-12 rounded-xl border-slate-800 bg-slate-950 text-white"
+                    />
+                  </div>
                 </div>
-              </div>
-              <DialogFooter className="gap-2">
-                <Button variant="ghost" className="font-bold text-slate-500" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                <Button className="font-black px-8 rounded-xl" onClick={handleAddParticipant}>Add</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter className="gap-2">
+                  <Button variant="ghost" className="font-bold text-slate-500" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                  <Button className="font-black px-8 rounded-xl" onClick={handleAddParticipant}>Add</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </div>
 
-      {/* Judge names reference */}
+      {/* Judges reference */}
       <Card className="rounded-[2rem] border-none bg-slate-900 border border-white/5 premium-shadow">
         <CardContent className="p-6 flex flex-wrap gap-3 items-center">
           <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest mr-2">Judges:</span>
@@ -214,9 +210,12 @@ export default function EventDetailPage() {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ranked.map((p, index) => (
-                <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                  index === 0 ? "bg-amber-900/20 border-amber-900/40" : "bg-slate-800/40 border-slate-800"
-                }`}>
+                <div
+                  key={p.id}
+                  className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                    index === 0 ? "bg-amber-900/20 border-amber-900/40" : "bg-slate-800/40 border-slate-800"
+                  }`}
+                >
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm ${
                       index === 0 ? "bg-amber-500 text-black" : "bg-slate-950 text-slate-400 border border-white/5"
@@ -240,35 +239,46 @@ export default function EventDetailPage() {
       <Card className="rounded-[2.5rem] overflow-hidden border-none shadow-2xl bg-slate-900 premium-shadow">
         <CardHeader className="border-b border-slate-800 bg-slate-950/50 p-6 md:p-8">
           <CardTitle className="text-xl font-black text-white">Score Encoding</CardTitle>
-          <p className="text-slate-500 text-sm font-medium mt-1">Enter each judge's score per participant. Totals update automatically.</p>
+          <p className="text-slate-500 text-sm font-medium mt-1">
+            Enter each judge&apos;s score per participant. Totals update automatically.
+          </p>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           {participants && participants.length > 0 ? (
             <Table>
               <TableHeader className="bg-slate-950/50 border-b border-slate-800">
                 <TableRow className="hover:bg-transparent border-0">
-                  <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] py-5 pl-8 text-slate-500 min-w-[160px]">Participant</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] py-5 pl-8 text-slate-500 min-w-[160px]">
+                    Participant
+                  </TableHead>
                   {event.judges.map((judge, i) => (
                     <TableHead key={i} className="text-center font-black uppercase text-[10px] tracking-[0.2em] py-5 text-slate-500 min-w-[120px]">
                       {judge}
                     </TableHead>
                   ))}
-                  <TableHead className="text-center font-black uppercase text-[10px] tracking-[0.2em] py-5 text-primary min-w-[100px]">Total</TableHead>
-                  <TableHead className="text-right font-black uppercase text-[10px] tracking-[0.2em] py-5 pr-8 text-slate-500 min-w-[120px]">Actions</TableHead>
+                  <TableHead className="text-center font-black uppercase text-[10px] tracking-[0.2em] py-5 text-primary min-w-[100px]">
+                    Total
+                  </TableHead>
+                  <TableHead className="text-right font-black uppercase text-[10px] tracking-[0.2em] py-5 pr-8 text-slate-500 min-w-[120px]">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {participants.map((participant) => {
                   const inputs = scoreInputs[participant.id] || {};
-                  const liveTotal = event.judges.reduce((sum, _, i) => {
-                    return sum + (parseFloat(inputs[i] || "0") || 0);
-                  }, 0);
+                  const liveTotal = event.judges.reduce(
+                    (sum, _, i) => sum + (parseFloat(inputs[i] || "0") || 0),
+                    0
+                  );
                   const isSaving = savingId === participant.id;
 
                   return (
                     <TableRow key={participant.id} className="group border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                       <TableCell className="pl-8 py-4">
-                        <span className="font-black text-slate-200 text-base group-hover:text-primary transition-colors">{participant.name}</span>
+                        <span className="font-black text-slate-200 text-base group-hover:text-primary transition-colors">
+                          {participant.name}
+                        </span>
                       </TableCell>
                       {event.judges.map((_, i) => (
                         <TableCell key={i} className="text-center py-4 px-3">
@@ -313,7 +323,11 @@ export default function EventDetailPage() {
             <div className="h-64 flex flex-col items-center justify-center gap-4">
               <Users className="w-12 h-12 text-slate-700" />
               <p className="text-slate-500 font-black uppercase tracking-widest text-sm">No participants yet</p>
-              <Button variant="outline" onClick={() => setIsAddOpen(true)} className="rounded-2xl font-black border-slate-800 bg-black text-white hover:bg-slate-900 px-8 h-11">
+              <Button
+                variant="outline"
+                onClick={() => setIsAddOpen(true)}
+                className="rounded-2xl font-black border-slate-800 bg-black text-white hover:bg-slate-900 px-8 h-11"
+              >
                 <Plus className="w-4 h-4 mr-2" /> Add First Participant
               </Button>
             </div>

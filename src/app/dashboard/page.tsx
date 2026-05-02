@@ -41,14 +41,13 @@ export default function DashboardPage() {
 
   const isAdmin = !!adminData;
   const isJudge = !!judgeData;
-  const userRole: "admin" | "judge" | "viewer" = isAdmin ? "admin" : isJudge ? "judge" : "viewer";
 
   const isAuthorizedPending = user?.email?.toLowerCase() === AUTHORIZED_ADMIN_EMAIL.toLowerCase() && !isAdmin;
 
   // Pending account requests (admin only)
   const requestsQuery = useMemoFirebase(() =>
     isAdmin
-      ? query(collection(firestore, "account_requests"), where("status", "==", "pending"), orderBy("createdAt", "desc"))
+      ? query(collection(firestore, "account_requests"), where("status", "==", "pending"))
       : null,
     [firestore, isAdmin]
   );
