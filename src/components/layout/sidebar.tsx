@@ -14,7 +14,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   UserCheck,
-  Activity
+  Activity,
+  Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
   { name: "Teams", href: "/teams", icon: Users, adminOnly: true },
   { name: "Matches", href: "/matches", icon: Swords, adminOnly: true },
+  { name: "Events", href: "/events", icon: Star, adminOnly: false },
   { name: "Standings", href: "/standings", icon: Trophy, adminOnly: false },
   { name: "Officials", href: "/officials", icon: UserCheck, adminOnly: true },
 ];

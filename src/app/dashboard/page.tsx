@@ -144,7 +144,7 @@ export default function DashboardPage() {
       )}
 
       {isAdmin && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           <Card className="rounded-[2rem] md:rounded-[3rem] border-none bg-slate-900 hover:bg-slate-800/80 transition-all border border-white/10 group cursor-pointer premium-shadow hover:-translate-y-1" asChild>
             <Link href="/teams">
               <CardContent className="p-6 md:p-10 flex items-center gap-6">
@@ -167,6 +167,19 @@ export default function DashboardPage() {
                 <div>
                   <h4 className="font-black text-white text-lg md:text-xl">Encode Score</h4>
                   <p className="text-[10px] uppercase font-black text-slate-500 tracking-[0.2em] mt-1">Official Tabulation</p>
+                </div>
+              </CardContent>
+            </Link>
+          </Card>
+          <Card className="rounded-[2rem] md:rounded-[3rem] border-none bg-slate-900 hover:bg-slate-800/80 transition-all border border-white/10 group cursor-pointer premium-shadow hover:-translate-y-1" asChild>
+            <Link href="/events">
+              <CardContent className="p-6 md:p-10 flex items-center gap-6">
+                <div className="p-4 bg-amber-900/30 rounded-[1.5rem] group-hover:scale-110 transition-transform shadow-lg shadow-amber-500/5">
+                  <Star className="w-8 h-8 text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="font-black text-white text-lg md:text-xl">Events</h4>
+                  <p className="text-[10px] uppercase font-black text-slate-500 tracking-[0.2em] mt-1">Judged Scoring</p>
                 </div>
               </CardContent>
             </Link>
