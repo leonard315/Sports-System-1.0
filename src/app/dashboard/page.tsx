@@ -54,7 +54,7 @@ export default function DashboardPage() {
   );
   const { data: pendingRequests } = useCollection<{
     id: string; name: string; email: string; role: string; status: string; createdAt: any;
-  }>(requestsQuery as any);
+  }>(requestsQuery);
 
   const handleApprove = async (requestId: string, action: "approve" | "reject") => {
     if (!auth.currentUser) return;
@@ -90,7 +90,7 @@ export default function DashboardPage() {
   );
 
   const eventsQuery = useMemoFirebase(() => collection(firestore, "judged_events"), [firestore]);
-  const { data: allEvents } = useCollection<{ id: string; status: string }>(eventsQuery as any);
+  const { data: allEvents } = useCollection<{ id: string; status: string }>(eventsQuery);
 
   const recentMatchesQuery = useMemoFirebase(() => 
     query(collection(firestore, "matches"), orderBy("date", "desc"), limit(6)),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -15,13 +15,26 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Edit2, ArrowLeft, Star, Search, X, ChevronRight, Users, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { format } from "date-fns";
 
 const STATUS_STYLES: Record<string, string> = {
   upcoming: "bg-blue-900/20 text-blue-400",
   ongoing: "bg-green-900/20 text-green-400",
   completed: "bg-slate-700/40 text-slate-400",
 };
+
+const TODAY = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+const BLANK_FORM = () => ({
+  name: "",
+  category: "Cheerdance",
+  date: "",
+  judgeCount: 3,
+  judges: ["Judge 1", "Judge 2", "Judge 3"],
+  status: "upcoming" as JudgedEvent["status"],
+});
 
 export default function EventsPage() {
   const firestore = useFirestore();
@@ -34,15 +47,12 @@ export default function EventsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<JudgedEvent | null>(null);
+  const [form, setForm] = useState(BLANK_FORM);
 
-  const [form, setForm] = useState({
-    name: "",
-    category: "Cheerdance",
-    date: format(new Date(), "yyyy-MM-dd"),
-    judgeCount: 3,
-    judges: ["Judge 1", "Judge 2", "Judge 3"],
-    status: "upcoming" as JudgedEvent["status"],
-  });
+  // Set today's date client-side only to avoid SSR hydration mismatch
+  useEffect(() => {
+    setForm((f) => ({ ...f, date: TODAY() }));
+  }, []);
 
   const updateJudgeCount = (count: number) => {
     const clamped = Math.max(1, Math.min(10, count));
@@ -71,13 +81,13 @@ export default function EventsPage() {
       id: ref.id,
       name: form.name.trim(),
       category: form.category,
-      date: form.date,
+      date: form.date || TODAY(),
       judges: form.judges,
       status: form.status,
       createdAt: serverTimestamp(),
     }, { merge: true });
     toast({ title: "Event Created", description: `${form.name} is ready for scoring.` });
-    setForm({ name: "", category: "Cheerdance", date: format(new Date(), "yyyy-MM-dd"), judgeCount: 3, judges: ["Judge 1", "Judge 2", "Judge 3"], status: "upcoming" });
+    setForm({ ...BLANK_FORM(), date: TODAY() });
     setIsAddOpen(false);
   };
 
