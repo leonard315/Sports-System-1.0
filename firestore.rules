@@ -1,0 +1,62 @@
+
+/**
+ * Firestore Security Rules
+ *
+ * CORE PHILOSOPHY:
+ * This ruleset implements a centralized administrative control model. While tournament data (Teams and Matches) 
+ * is publicly accessible for viewing to support transparency and engagement, all modifications are restricted 
+ * to verified administrators. 
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+
+    /** Checks if the user is authenticated with Firebase Auth. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** 
+     * Verifies if the authenticated user has administrative privileges.
+     * Checks for the existence of a document in the 'roles_admin' collection matching the user's UID.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    function isExistingAdmin() {
+      return isAdmin() && resource != null;
+    }
+
+    // --- Collection Rules ---
+
+    match /teams/{teamId} {
+      allow get, list: if true;
+      allow create: if isAdmin() && request.resource.data.id == teamId;
+      allow update: if isExistingAdmin() && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingAdmin();
+    }
+
+    match /matches/{matchId} {
+      allow get, list: if true;
+      allow create: if isAdmin() && request.resource.data.id == matchId;
+      allow update: if isExistingAdmin() && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingAdmin();
+    }
+
+    /**
+     * @description Rules for the 'roles_admin' metadata collection.
+     * For development/prototyping, we allow users to create their own admin document 
+     * during registration to facilitate testing the tabulation features.
+     * We allow signed-in users to list officials so the registry page works.
+     */
+    match /roles_admin/{userId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update, delete: if false;
+    }
+  }
+}

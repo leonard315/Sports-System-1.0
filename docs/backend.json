@@ -1,0 +1,182 @@
+{
+  "entities": {
+    "Team": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Team",
+      "type": "object",
+      "description": "Represents a sports team participating in the tournament, including its current standings and statistics.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Team entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The official name of the sports team. Must be unique within the tournament."
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "Optional URL to the team's logo image.",
+          "format": "uri"
+        },
+        "gamesPlayed": {
+          "type": "number",
+          "description": "Total number of matches played by the team. Automatically computed and initialized to 0."
+        },
+        "wins": {
+          "type": "number",
+          "description": "Total number of matches won by the team. Automatically computed and initialized to 0."
+        },
+        "losses": {
+          "type": "number",
+          "description": "Total number of matches lost by the team. Automatically computed and initialized to 0."
+        },
+        "draws": {
+          "type": "number",
+          "description": "Total number of matches drawn by the team. Automatically computed and initialized to 0."
+        },
+        "points": {
+          "type": "number",
+          "description": "Total points accumulated by the team (Win = 3, Draw = 1, Loss = 0). Automatically computed and initialized to 0."
+        },
+        "scoreFor": {
+          "type": "number",
+          "description": "Total points scored by the team across all matches (Score+). Automatically computed and initialized to 0."
+        },
+        "scoreAgainst": {
+          "type": "number",
+          "description": "Total points allowed (scored against) by the team across all matches (Score-). Automatically computed and initialized to 0."
+        },
+        "scoreDifference": {
+          "type": "number",
+          "description": "The difference between total points scored and total points allowed (Score+ - Score-). Automatically computed and initialized to 0."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "gamesPlayed",
+        "wins",
+        "losses",
+        "draws",
+        "points",
+        "scoreFor",
+        "scoreAgainst",
+        "scoreDifference"
+      ]
+    },
+    "Match": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Match",
+      "type": "object",
+      "description": "Records the details and outcome of a single sports match between two teams.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Match entity."
+        },
+        "teamAId": {
+          "type": "string",
+          "description": "Reference to Team A's unique identifier. This team is considered 'home' or 'first' in the match record. (Relationship: Team 1:N Match)"
+        },
+        "teamBId": {
+          "type": "string",
+          "description": "Reference to Team B's unique identifier. This team is considered 'away' or 'second' in the match record. (Relationship: Team 1:N Match)"
+        },
+        "scoreA": {
+          "type": "number",
+          "description": "The score achieved by Team A in this match."
+        },
+        "scoreB": {
+          "type": "number",
+          "description": "The score achieved by Team B in this match."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date and time when the match was played.",
+          "format": "date-time"
+        },
+        "winnerTeamId": {
+          "type": "string",
+          "description": "Reference to the unique identifier of the winning team, if any. This field is null if the match results in a draw. (Relationship: Team 1:N Match)"
+        },
+        "loserTeamId": {
+          "type": "string",
+          "description": "Reference to the unique identifier of the losing team, if any. This field is null if the match results in a draw. (Relationship: Team 1:N Match)"
+        },
+        "isDraw": {
+          "type": "boolean",
+          "description": "Indicates whether the match resulted in a draw. Automatically computed based on scores."
+        }
+      },
+      "required": [
+        "id",
+        "teamAId",
+        "teamBId",
+        "scoreA",
+        "scoreB",
+        "date",
+        "isDraw"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/teams/{teamId}",
+        "definition": {
+          "entityName": "Team",
+          "schema": {
+            "$ref": "#/backend/entities/Team"
+          },
+          "description": "Collection storing individual team profiles and their current, automatically tabulated tournament statistics. Publicly readable, admin-editable. Includes denormalized statistical fields that are updated by backend logic based on match outcomes.",
+          "params": [
+            {
+              "name": "teamId",
+              "description": "The unique identifier for a specific team document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/matches/{matchId}",
+        "definition": {
+          "entityName": "Match",
+          "schema": {
+            "$ref": "#/backend/entities/Match"
+          },
+          "description": "Collection detailing the results of individual sports matches between teams. Publicly readable, admin-editable. Creation or update of these documents triggers backend logic to update corresponding team statistics.",
+          "params": [
+            {
+              "name": "matchId",
+              "description": "The unique identifier for a specific match document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "roles_admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A collection used for Database Access Control (DBAC) to identify administrators. Each document's ID corresponds to the UID of an admin user. The existence of a document signifies admin privileges for that user. This collection is for internal authorization checks and ensures Authorization Independence without 'get()' operations.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the administrator."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be secure, scalable, and debuggable, strictly adhering to the core design principles and strategy mandates. It consists of three primary collections: `teams`, `matches`, and `roles_admin`. The `teams` and `matches` collections store all tournament-related data, while `roles_admin` manages administrative access.\n\n**Authorization Independence (CRITICAL):** Authorization independence is primarily achieved through the dedicated `/roles_admin/{userId}` collection. This collection stores the User IDs (UIDs) of all administrators. Security rules will check for the existence of `request.auth.uid` in this collection to grant admin privileges. This approach eliminates the need for `get()` calls in security rules to fetch user profiles or parent documents to determine roles, thus supporting atomic operations and simplifying rule logic. For `teams` and `matches`, all documents within these collections share the same security posture for read and write operations (public read, admin write), removing any need for denormalized authorization fields within individual documents for hierarchical access.\n\n**QAPs (Rules are not Filters):** This structure inherently supports secure `list` operations (Query Against Permissions). Both `/teams` and `/matches` collections are designed for public read access (or authenticated read access if 'viewer mode' requires authentication). This means all documents within these collections are equally readable by permitted users. Therefore, a client can issue a `list` query without it being implicitly filtered by security rules, as all visible documents are permitted. Write operations are strictly limited to authenticated administrators, ensuring data integrity without requiring filtering.\n\n**Structural Segregation:** The `teams` and `matches` collections are segregated to hold data with homogeneous security requirements: public read, admin write. The `roles_admin` collection is separately managed for admin role assignment, reinforcing clear separation of concerns.\n\n**Data Consistency and Invariants:** The `Team` entity contains numerous denormalized statistics (e.g., `gamesPlayed`, `wins`, `points`, `scoreDifference`). These fields are designated to be automatically updated via backend functions (e.g., Cloud Functions) whenever a `Match` document is created, updated, or deleted. This ensures that team standings are always consistent with match results, maintaining crucial invariants and providing real-time tabulation without requiring complex client-side aggregation or multiple database reads for display."
+  }
+}

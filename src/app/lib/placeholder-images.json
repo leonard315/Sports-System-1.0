@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "team-logo-1",
+      "description": "Abstract sports team logo 1",
+      "imageUrl": "https://picsum.photos/seed/sports1/200/200",
+      "imageHint": "sports logo"
+    },
+    {
+      "id": "team-logo-2",
+      "description": "Abstract sports team logo 2",
+      "imageUrl": "https://picsum.photos/seed/sports2/200/200",
+      "imageHint": "team emblem"
+    },
+    {
+      "id": "hero-sports",
+      "description": "Stadium background for sports tournament",
+      "imageUrl": "https://picsum.photos/seed/stadium/1200/600",
+      "imageHint": "sports stadium"
+    }
+  ]
+}
